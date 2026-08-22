@@ -23,7 +23,7 @@ export function Wordmark({ compact = false, linked = true }: { compact?: boolean
 
 export function LibraryLink({ active = false, disabled = false }: { active?: boolean; disabled?: boolean }) {
   const className = cn(
-    "text-[11px] font-medium uppercase tracking-[0.18em] transition duration-180",
+    "text-[11px] font-medium uppercase tracking-[0.18em] whitespace-nowrap transition duration-180",
     disabled ? "pointer-events-none opacity-40" : active ? "text-accent" : "text-label hover:text-text",
   );
   if (disabled) return <span className={className}>Library</span>;

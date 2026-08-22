@@ -66,7 +66,7 @@ export function DropCard({ kind, asset, loading, error, onFile }: DropCardProps)
       onDragLeave={() => setOver(false)}
       onDrop={onDrop}
       className={cn(
-        "group relative flex h-[280px] w-full cursor-pointer flex-col overflow-hidden rounded-[20px] text-left transition duration-180",
+        "group relative flex h-[220px] w-full cursor-pointer flex-col overflow-hidden rounded-[20px] text-left transition duration-180 sm:h-[280px]",
         error
           ? "border border-rose/70 bg-rose/5"
           : over
@@ -143,7 +143,7 @@ export function MediaChip({
       type="button"
       disabled={disabled}
       onClick={() => inputRef.current?.click()}
-      className="flex max-w-[220px] items-center gap-2 rounded-full border border-white/10 bg-white/5 py-1 pl-1 pr-3 text-left hover:border-white/20 disabled:opacity-40"
+      className="flex max-w-none min-w-0 flex-1 items-center gap-2 rounded-full border border-white/10 bg-white/5 py-1 pl-1 pr-2 text-left hover:border-white/20 disabled:opacity-40 sm:max-w-[220px] sm:pr-3"
       title="Replace file"
     >
       <input

@@ -150,10 +150,10 @@ export function Timeline({
   const selected = segments.find((s) => s.id === selectedId) ?? null;
 
   return (
-    <div className="flex h-40 flex-col border-t border-white/8 bg-well px-4 py-2">
+    <div className="flex h-28 shrink-0 flex-col border-t border-white/8 bg-well px-3 py-2 sm:h-36 sm:px-4 lg:h-40">
       <div
         ref={rootRef}
-        className="relative min-h-0 flex-1 select-none"
+        className="relative min-h-0 flex-1 touch-none select-none"
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
@@ -164,7 +164,7 @@ export function Timeline({
           {ticks.map((tick) => (
             <span
               key={tick}
-              className="absolute top-0 font-mono text-[10px] text-label"
+              className="absolute top-0 -translate-x-1/2 font-mono text-[10px] text-label"
               style={{ left: `${(tick / duration) * 100}%` }}
             >
               {formatTime(tick)}
@@ -226,7 +226,7 @@ export function Timeline({
         </div>
         {selected && (
           <div
-            className="glass absolute bottom-[calc(100%+8px)] z-30 w-64 rounded-2xl p-3"
+            className="glass absolute bottom-[calc(100%+8px)] z-30 hidden w-64 rounded-2xl p-3 lg:block"
             style={{ left: `clamp(8px, ${(selected.start / duration) * 100}%, calc(100% - 16.5rem))` }}
             onPointerDown={(event) => event.stopPropagation()}
           >
@@ -276,7 +276,7 @@ export function Timeline({
 
 function ticksFor(duration: number): number[] {
   if (duration <= 0) return [];
-  const step = duration > 120 ? 10 : duration > 30 ? 5 : 1;
+  const step = duration > 180 ? 30 : duration > 90 ? 15 : duration > 40 ? 10 : duration > 15 ? 5 : duration > 6 ? 2 : 1;
   const ticks: number[] = [];
   for (let t = 0; t <= duration + 0.001; t += step) ticks.push(t);
   return ticks;

@@ -24,7 +24,7 @@ export function SegmentedControl<T extends string>({
             type="button"
             onClick={() => onChange(option.id)}
             className={cn(
-              "relative flex-1 rounded-full px-2 py-1.5 text-xs font-medium transition duration-180",
+              "relative flex-1 rounded-full px-1.5 py-1.5 text-[11px] font-medium transition duration-180 sm:px-2 sm:text-xs",
               active ? "bg-white/10 text-text" : "text-muted hover:text-text",
             )}
           >

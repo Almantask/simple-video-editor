@@ -68,11 +68,11 @@ export interface InspectorProps {
 
 export function Inspector(props: InspectorProps) {
   return (
-    <aside className="glass flex h-72 w-full shrink-0 flex-col overflow-hidden lg:h-auto lg:w-[360px]">
+    <aside className="glass flex h-52 w-full min-h-0 shrink-0 flex-col overflow-hidden sm:h-64 lg:h-full">
       <div className="p-3">
         <SegmentedControl options={TABS} value={props.tab} onChange={props.onTab} />
       </div>
-      <div className="min-h-0 flex-1 overflow-y-auto px-6 pb-6">
+      <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-6 sm:px-6">
         {props.tab === "speed" && <SpeedPanel {...props} />}
         {props.tab === "lyrics" && <LyricsPanel {...props} />}
         {props.tab === "visual" && <VisualPanel {...props} />}
@@ -201,7 +201,7 @@ function AddInterval({
           max={duration}
           step={0.1}
           defaultValue={Number(currentTime.toFixed(1))}
-          className="w-full rounded-xl border border-white/10 bg-white/5 px-2 py-1.5 font-mono text-xs"
+          className="w-full rounded-xl border border-white/10 bg-white/5 px-2 py-1.5 font-mono text-base sm:text-xs"
           aria-label="Start time"
         />
         <span className="text-label">–</span>
@@ -212,7 +212,7 @@ function AddInterval({
           max={duration}
           step={0.1}
           defaultValue={Number(Math.min(duration, currentTime + 2).toFixed(1))}
-          className="w-full rounded-xl border border-white/10 bg-white/5 px-2 py-1.5 font-mono text-xs"
+          className="w-full rounded-xl border border-white/10 bg-white/5 px-2 py-1.5 font-mono text-base sm:text-xs"
           aria-label="End time"
         />
         <Button

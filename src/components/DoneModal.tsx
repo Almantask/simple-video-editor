@@ -24,8 +24,8 @@ export function DoneModal({
 }) {
   const [name, setName] = useState(defaultName);
   return (
-    <div className="fixed inset-0 z-40 grid place-items-center bg-black/70 p-4">
-      <div className="glass w-full max-w-lg overflow-hidden rounded-[20px]">
+    <div className="fixed inset-0 z-40 grid place-items-center overflow-y-auto bg-black/70 p-4">
+      <div className="glass my-auto w-full max-w-lg overflow-hidden rounded-[20px]">
         <div className="relative aspect-video bg-black">
           {poster ? <img src={poster} alt="" className="h-full w-full object-cover" /> : null}
           <button
@@ -41,10 +41,10 @@ export function DoneModal({
           <input
             value={name}
             onChange={(event) => setName(event.target.value)}
-            className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm"
+          className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-base sm:text-sm"
             aria-label="File name"
           />
-          <div className="flex gap-2">
+          <div className="flex flex-col gap-2 sm:flex-row">
             <Button
               variant="solid"
               className="flex flex-1 items-center justify-center gap-2 py-2.5"

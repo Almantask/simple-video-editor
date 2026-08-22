@@ -10,7 +10,7 @@ export function Toast({ toast, onClose }: { toast: ToastMessage; onClose: () => 
   }, [toast.id, onClose]);
 
   return (
-    <div className="pointer-events-none fixed inset-x-0 bottom-6 z-50 flex justify-center px-4">
+    <div className="pointer-events-none fixed inset-x-0 bottom-[max(1.5rem,env(safe-area-inset-bottom))] z-50 flex justify-center px-4">
       <div
         className={cn(
           "pointer-events-auto glass flex max-w-md items-start gap-3 rounded-2xl px-4 py-3 text-sm",

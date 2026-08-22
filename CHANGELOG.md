@@ -14,7 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- Sped-up video no longer blacks out on the preview canvas
+- Studio, landing, and library layouts no longer overlap on small screens
 
 ### Added
 

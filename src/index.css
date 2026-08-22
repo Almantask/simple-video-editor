@@ -34,8 +34,14 @@ html,
 body,
 #root {
   min-height: 100%;
+  min-height: 100dvh;
   background: var(--bg);
   color: var(--text);
+}
+
+html,
+body {
+  overflow-x: hidden;
 }
 
 body {
@@ -53,6 +59,7 @@ input,
 select,
 textarea {
   font-family: inherit;
+  touch-action: manipulation;
 }
 
 ::selection {
@@ -182,6 +189,7 @@ input[type="checkbox"] {
 }
 
 .tutorial-stage {
+  --travel: 150px;
   position: relative;
   height: 186px;
   width: min(100%, 520px);
@@ -439,12 +447,12 @@ input[type="checkbox"] {
   0%,
   8% {
     opacity: 0;
-    transform: translateX(-150px) scale(0.96);
+    transform: translateX(calc(var(--travel) * -1)) scale(0.96);
   }
   18%,
   38% {
     opacity: 1;
-    transform: translateX(-150px) scale(1);
+    transform: translateX(calc(var(--travel) * -1)) scale(1);
   }
   50% {
     opacity: 0;
@@ -461,12 +469,12 @@ input[type="checkbox"] {
   0%,
   8% {
     opacity: 0;
-    transform: translateX(150px) scale(0.96);
+    transform: translateX(var(--travel)) scale(0.96);
   }
   18%,
   38% {
     opacity: 1;
-    transform: translateX(150px) scale(1);
+    transform: translateX(var(--travel)) scale(1);
   }
   50% {
     opacity: 0;
@@ -601,52 +609,45 @@ input[type="checkbox"] {
 
 @media (max-width: 640px) {
   .tutorial-stage {
-    height: 200px;
+    --travel: 100px;
+    height: 168px;
     width: min(100%, 360px);
   }
+}
 
-  @keyframes tutorial-video {
-    0%,
-    8% {
-      opacity: 0;
-      transform: translateX(-108px) scale(0.96);
-    }
-    18%,
-    38% {
-      opacity: 1;
-      transform: translateX(-108px) scale(1);
-    }
-    50% {
-      opacity: 0;
-      transform: translateX(0) scale(0.5);
-    }
-    50.01%,
-    100% {
-      opacity: 0;
-      transform: translateX(0) scale(0.4);
-    }
+@media (max-width: 400px) {
+  .tutorial-stage {
+    --travel: 72px;
+    height: 148px;
   }
 
-  @keyframes tutorial-audio {
-    0%,
-    8% {
-      opacity: 0;
-      transform: translateX(108px) scale(0.96);
-    }
-    18%,
-    38% {
-      opacity: 1;
-      transform: translateX(108px) scale(1);
-    }
-    50% {
-      opacity: 0;
-      transform: translateX(0) scale(0.5);
-    }
-    50.01%,
-    100% {
-      opacity: 0;
-      transform: translateX(0) scale(0.4);
-    }
+  .tutorial-piece {
+    width: 120px;
+  }
+
+  .tutorial-video,
+  .tutorial-audio {
+    margin-left: -60px;
+  }
+
+  .tutorial-film,
+  .tutorial-wave {
+    width: 120px;
+    height: 72px;
+  }
+
+  .tutorial-result {
+    width: 168px;
+    margin-left: -84px;
+  }
+
+  .tutorial-film-loop {
+    width: 168px;
+    height: 96px;
+  }
+
+  .tutorial-poof {
+    font-size: 32px;
   }
 }
 

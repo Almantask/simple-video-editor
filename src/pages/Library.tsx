@@ -76,11 +76,11 @@ export function Library({
   };
 
   return (
-    <div className="relative min-h-dvh overflow-hidden bg-bg text-text">
+    <div className="relative min-h-dvh overflow-x-hidden bg-bg text-text">
       <div className="vignette pointer-events-none absolute inset-0" />
-      <header className="relative flex items-center gap-4 px-8 py-6">
+      <header className="relative flex items-center gap-3 px-4 py-4 sm:gap-4 sm:px-8 sm:py-6">
         <Wordmark />
-        <div className="ml-auto flex items-center gap-4">
+        <div className="ml-auto flex items-center gap-3 sm:gap-4">
           {canEdit ? (
             <a href="#" className="text-[11px] font-medium uppercase tracking-[0.18em] text-label hover:text-text">
               Editor
@@ -89,8 +89,8 @@ export function Library({
           <LibraryLink active />
         </div>
       </header>
-      <main className="relative mx-auto max-w-6xl px-6 pb-16">
-        <h1 className="font-serif text-4xl text-text md:text-5xl">Library</h1>
+      <main className="relative mx-auto max-w-6xl px-4 pb-[max(4rem,env(safe-area-inset-bottom))] sm:px-6">
+        <h1 className="font-serif text-3xl text-text sm:text-4xl md:text-5xl">Library</h1>
         <p className="mt-3 max-w-xl text-sm text-muted">
           Clips you save stay in this browser until you delete them. They are not uploaded.
         </p>
@@ -114,10 +114,10 @@ export function Library({
         ) : null}
       </main>
       {player ? (
-        <div className="fixed inset-0 z-40 grid place-items-center bg-black/70 p-4">
-          <div className="glass w-full max-w-3xl overflow-hidden rounded-[20px]">
+        <div className="fixed inset-0 z-40 grid place-items-end bg-black/70 p-0 sm:place-items-center sm:p-4">
+          <div className="glass w-full max-w-3xl overflow-hidden rounded-t-[20px] sm:rounded-[20px]">
             <video src={player.url} controls autoPlay className="aspect-video w-full bg-black" />
-            <div className="flex flex-wrap items-center gap-2 p-4">
+            <div className="flex flex-wrap items-center gap-2 p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
               <div className="min-w-0 flex-1">
                 <div className="truncate text-sm font-medium">{player.clip.name}</div>
                 <div className="font-mono text-[11px] text-muted">
@@ -178,11 +178,11 @@ function ClipCard({
           </p>
         </div>
         <div className="flex gap-2">
-          <Button className="flex flex-1 items-center justify-center gap-2" onClick={onPlay}>
+          <Button className="flex min-w-0 flex-1 items-center justify-center gap-1.5 px-2 text-xs sm:gap-2 sm:text-sm" onClick={onPlay}>
             <PlayIcon className="size-4" />
             Play
           </Button>
-          <Button className="flex flex-1 items-center justify-center gap-2" onClick={onDownload}>
+          <Button className="flex min-w-0 flex-1 items-center justify-center gap-1.5 px-2 text-xs sm:gap-2 sm:text-sm" onClick={onDownload}>
             <DownloadIcon className="size-4" />
             Download
           </Button>
