@@ -7,19 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Changed
+## [1.1.0] - 2026-08-22
 
-- Download builds the file in the tab with WebCodecs instead of recording the preview in real time
-- Export inspector tab is now **File**, with Download and Save to library
-
-### Fixed
-
-- Studio, landing, and library layouts no longer overlap on small screens
+Download, library, and a layout that fits a phone. Files still never leave this tab.
 
 ### Added
 
-- Save to library stores the finished clip in this browser (IndexedDB)
-- Library page (`#library`) to play, download, or delete saved clips
+- **Save to library** stores the finished clip in this browser (IndexedDB)
+- **Library** page (`#library`) to play, download, or delete saved clips
+- Landing tutorial: video + music become a looping clip
+
+### Changed
+
+- **Download** builds the file in the tab with WebCodecs instead of recording the preview in real time
+- Inspector **Export** tab is now **File**, with Download and Save to library
+- Preview and music stay paused while a file is created
+- Landing headline says video, not picture
+
+### Fixed
+
+- Sped-up video no longer blacks out on the preview canvas
+- Studio, landing, and library layouts no longer overlap on small screens
+- Chromium no longer fails when you pick the same file again after the first drop
+
+### Notes
+
+- Keep the tab open until download finishes
+- Chrome or Edge if this browser cannot encode a video file
+- Library clips stay on this device until you delete them
 
 ## [1.0.0] - 2026-08-22
 
@@ -44,5 +59,6 @@ First public release of **Loop**, an in-browser music video maker. Everything ru
 - Video speed ramps do not change the music
 - Export is real time (a 3-minute song takes about 3 minutes) and the tab must stay in the foreground
 
-[Unreleased]: https://github.com/Almantask/simple-video-editor/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/Almantask/simple-video-editor/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/Almantask/simple-video-editor/releases/tag/v1.1.0
 [1.0.0]: https://github.com/Almantask/simple-video-editor/releases/tag/v1.0.0

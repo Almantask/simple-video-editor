@@ -18,6 +18,7 @@ const rest = changelog.slice(start);
 const lines = rest.split(/\r?\n/);
 const body = [];
 for (const line of lines) {
+  if (body.length > 0 && /^## \[/.test(line)) break;
   if (/^\[[^\]]+\]:/.test(line)) break;
   body.push(line);
 }
