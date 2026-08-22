@@ -13,7 +13,7 @@ import type {
   VisualizerId,
 } from "../types";
 import { RATE_PRESETS } from "../types";
-import { TrashIcon, UploadIcon } from "./Icons";
+import { DownloadIcon, SaveIcon, TrashIcon, UploadIcon } from "./Icons";
 import { Button, FieldLabel } from "./ui/Button";
 import { SegmentedControl, Slider } from "./ui/Controls";
 
@@ -21,7 +21,7 @@ const TABS: { id: InspectorTab; label: string }[] = [
   { id: "speed", label: "Speed" },
   { id: "lyrics", label: "Lyrics" },
   { id: "visual", label: "Visual" },
-  { id: "export", label: "Export" },
+  { id: "export", label: "File" },
 ];
 
 const VISUALS: { id: VisualizerId; label: string }[] = [
@@ -48,7 +48,7 @@ export interface InspectorProps {
   onShowLyrics: (value: boolean) => void;
   onLyricFontSize: (value: number) => void;
   onLyricColor: (value: string) => void;
-  onLyricsFile: (file: File) => void;
+  onLyricsFile: (file: File) => void | Promise<void>;
   visualizer: VisualizerId;
   visualizerOpacity: number;
   visualizerColor: string;
@@ -62,6 +62,7 @@ export interface InspectorProps {
   onFit: (value: FitMode) => void;
   exporting: boolean;
   onExport: () => void;
+  onSaveLibrary: () => void;
   notify: (text: string, tone?: "info" | "error") => void;
 }
 
@@ -245,7 +246,7 @@ function LyricsPanel({
   const onDrop = (event: DragEvent) => {
     event.preventDefault();
     const file = event.dataTransfer.files[0];
-    if (file) onLyricsFile(file);
+    if (file) void onLyricsFile(file);
   };
   return (
     <div className="space-y-5">
@@ -273,9 +274,12 @@ function LyricsPanel({
           accept=".lrc,.srt,text/plain"
           className="sr-only"
           onChange={(event) => {
-            const file = event.target.files?.[0];
-            event.target.value = "";
-            if (file) onLyricsFile(file);
+            const input = event.currentTarget;
+            const file = input.files?.[0];
+            if (!file) return;
+            void Promise.resolve(onLyricsFile(file)).finally(() => {
+              input.value = "";
+            });
           }}
         />
       </button>
@@ -394,7 +398,7 @@ function VisualCard({
   );
 }
 
-function ExportPanel({ resolution, fit, onResolution, onFit, exporting, onExport }: InspectorProps) {
+function ExportPanel({ resolution, fit, onResolution, onFit, exporting, onExport, onSaveLibrary }: InspectorProps) {
   const format = pickMime();
   return (
     <div className="space-y-5">
@@ -422,12 +426,18 @@ function ExportPanel({ resolution, fit, onResolution, onFit, exporting, onExport
       </div>
       <div className="text-xs text-muted">
         Output format: <span className="rounded-full bg-white/10 px-2 py-0.5 font-medium text-text">{format.label}</span>
+        <span className="mt-1 block text-[11px] text-label">WebM if this browser cannot encode MP4.</span>
       </div>
       <p className="rounded-2xl bg-white/5 px-3 py-3 text-xs leading-relaxed text-muted">
-        Export records in real time. A 3-minute song takes about 3 minutes, and this tab must stay in the foreground.
+        Download builds the file in this tab. Keep the tab open until it finishes.
       </p>
-      <Button variant="solid" className="w-full py-2.5" disabled={exporting} onClick={onExport}>
-        {exporting ? "Recording…" : "Export"}
+      <Button variant="solid" className="flex w-full items-center justify-center gap-2 py-2.5" disabled={exporting} onClick={onExport}>
+        <DownloadIcon className="size-4" />
+        {exporting ? "Creating…" : "Download"}
+      </Button>
+      <Button className="flex w-full items-center justify-center gap-2 py-2.5" disabled={exporting} onClick={onSaveLibrary}>
+        <SaveIcon className="size-4" />
+        Save to library
       </Button>
     </div>
   );

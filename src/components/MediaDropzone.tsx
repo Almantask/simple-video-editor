@@ -1,21 +1,32 @@
-import { useEffect, useRef, useState, type DragEvent } from "react";
+import { useEffect, useRef, useState, type ChangeEvent, type DragEvent } from "react";
 import { cn, formatTime } from "../lib/utils";
 import { drawPeaks } from "../engine/waveform";
 import type { MediaAsset } from "../types";
 import { FilmIcon, WaveIcon } from "./Icons";
+
+type FileHandler = (file: File) => void | Promise<void>;
 
 interface DropCardProps {
   kind: "video" | "audio";
   asset: MediaAsset | null;
   loading: boolean;
   error: string | null;
-  onFile: (file: File) => void;
+  onFile: FileHandler;
 }
 
 const ACCEPT = {
   video: "video/*,.mp4,.webm,.mov,.m4v",
   audio: "audio/*,.mp3,.wav,.flac,.m4a,.aac,.ogg",
 };
+
+function takePickedFile(event: ChangeEvent<HTMLInputElement>, onFile: FileHandler) {
+  const input = event.currentTarget;
+  const file = input.files?.[0];
+  if (!file) return;
+  void Promise.resolve(onFile(file)).finally(() => {
+    input.value = "";
+  });
+}
 
 export function DropCard({ kind, asset, loading, error, onFile }: DropCardProps) {
   const [over, setOver] = useState(false);
@@ -41,7 +52,7 @@ export function DropCard({ kind, asset, loading, error, onFile }: DropCardProps)
     event.preventDefault();
     setOver(false);
     const file = event.dataTransfer.files[0];
-    if (file) onFile(file);
+    if (file) void onFile(file);
   };
 
   return (
@@ -56,7 +67,13 @@ export function DropCard({ kind, asset, loading, error, onFile }: DropCardProps)
       onDrop={onDrop}
       className={cn(
         "group relative flex h-[280px] w-full cursor-pointer flex-col overflow-hidden rounded-[20px] text-left transition duration-180",
-        error ? "border border-rose/70 bg-rose/5" : over ? "border border-accent bg-accent/10 shadow-[0_0_40px_rgba(34,211,238,0.18)] scale-[1.01]" : asset ? "border border-white/10 bg-surface" : "grid-texture border border-dashed border-white/15 bg-white/[0.02]",
+        error
+          ? "border border-rose/70 bg-rose/5"
+          : over
+            ? "border border-accent bg-accent/10 shadow-[0_0_40px_rgba(34,211,238,0.18)] scale-[1.01]"
+            : asset
+              ? "border border-white/10 bg-surface"
+              : "grid-texture border border-dashed border-white/15 bg-white/[0.02]",
       )}
     >
       <input
@@ -64,11 +81,8 @@ export function DropCard({ kind, asset, loading, error, onFile }: DropCardProps)
         type="file"
         accept={ACCEPT[kind]}
         className="sr-only"
-        onChange={(event) => {
-          const file = event.target.files?.[0];
-          event.target.value = "";
-          if (file) onFile(file);
-        }}
+        onChange={(event) => takePickedFile(event, onFile)}
+        onClick={(event) => event.stopPropagation()}
       />
       {asset ? (
         <>
@@ -121,7 +135,7 @@ export function MediaChip({
   kind: "video" | "audio";
   asset: MediaAsset;
   disabled?: boolean;
-  onFile: (file: File) => void;
+  onFile: FileHandler;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   return (
@@ -137,11 +151,8 @@ export function MediaChip({
         type="file"
         accept={ACCEPT[kind]}
         className="sr-only"
-        onChange={(event) => {
-          const file = event.target.files?.[0];
-          event.target.value = "";
-          if (file) onFile(file);
-        }}
+        onChange={(event) => takePickedFile(event, onFile)}
+        onClick={(event) => event.stopPropagation()}
       />
       {kind === "video" && asset.thumbnail ? (
         <img src={asset.thumbnail} alt="" className="size-7 rounded-full object-cover" />

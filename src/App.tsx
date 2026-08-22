@@ -1,9 +1,14 @@
 import { useCallback, useEffect, useState } from "react";
 import { Landing } from "./pages/Landing";
+import { Library } from "./pages/Library";
 import { Studio } from "./pages/Studio";
 import { Toast } from "./components/ui/Toast";
 import { loadAudioFile, loadVideoFile } from "./lib/media";
 import type { LyricLine, MediaAsset, ToastMessage } from "./types";
+
+function isLibraryHash(): boolean {
+  return window.location.hash === "#library";
+}
 
 export default function App() {
   const [video, setVideo] = useState<MediaAsset | null>(null);
@@ -15,6 +20,7 @@ export default function App() {
   const [videoError, setVideoError] = useState<string | null>(null);
   const [audioError, setAudioError] = useState<string | null>(null);
   const [studio, setStudio] = useState(false);
+  const [library, setLibrary] = useState(isLibraryHash);
   const [toast, setToast] = useState<ToastMessage | null>(null);
 
   const notify = useCallback((text: string, tone: "info" | "error" = "info") => {
@@ -31,6 +37,12 @@ export default function App() {
       window.removeEventListener("dragover", prevent);
       window.removeEventListener("drop", prevent);
     };
+  }, []);
+
+  useEffect(() => {
+    const onHash = () => setLibrary(isLibraryHash());
+    window.addEventListener("hashchange", onHash);
+    return () => window.removeEventListener("hashchange", onHash);
   }, []);
 
   useEffect(() => {
@@ -75,16 +87,22 @@ export default function App() {
     }
   };
 
+  let page: "library" | "studio" | "landing" = "landing";
+  if (library) page = "library";
+  else if (studio && video && audio) page = "studio";
+
   return (
     <>
-      {studio && video && audio ? (
+      {page === "library" ? (
+        <Library canEdit={!!video && !!audio} notify={notify} />
+      ) : page === "studio" && video && audio ? (
         <Studio
           video={video}
           audio={audio}
           lyrics={lyrics}
           lyricsEmbedded={lyricsEmbedded}
-          onVideoFile={(file) => void onVideo(file)}
-          onAudioFile={(file) => void onAudio(file)}
+          onVideoFile={onVideo}
+          onAudioFile={onAudio}
           onLyrics={(lines, fromFile) => {
             setLyrics(lines);
             if (fromFile) setLyricsEmbedded(false);
@@ -99,8 +117,8 @@ export default function App() {
           audioLoading={audioLoading}
           videoError={videoError}
           audioError={audioError}
-          onVideo={(file) => void onVideo(file)}
-          onAudio={(file) => void onAudio(file)}
+          onVideo={onVideo}
+          onAudio={onAudio}
         />
       )}
       {toast && <Toast toast={toast} onClose={() => setToast(null)} />}

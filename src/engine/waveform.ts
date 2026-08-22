@@ -1,8 +1,8 @@
-export async function computePeaks(file: File, buckets = 900): Promise<Float32Array> {
+export async function computePeaks(source: Blob | ArrayBuffer, buckets = 900): Promise<Float32Array> {
   const ctx = new AudioContext();
   try {
-    const buffer = await file.arrayBuffer();
-    const audio = await ctx.decodeAudioData(buffer);
+    const bytes = source instanceof ArrayBuffer ? source : await source.arrayBuffer();
+    const audio = await ctx.decodeAudioData(bytes);
     const data = audio.getChannelData(0);
     const peaks = new Float32Array(buckets);
     const samplesPerBucket = Math.max(1, Math.floor(data.length / buckets));

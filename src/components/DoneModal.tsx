@@ -1,19 +1,25 @@
 import { useState } from "react";
 import { downloadBlob } from "../lib/utils";
 import { Button } from "./ui/Button";
-import { CloseIcon, DownloadIcon } from "./Icons";
+import { CloseIcon, DownloadIcon, SaveIcon } from "./Icons";
 
 export function DoneModal({
   poster,
   blob,
   ext,
   defaultName,
+  saving,
+  saved,
+  onSaveLibrary,
   onClose,
 }: {
   poster: string;
   blob: Blob;
   ext: string;
   defaultName: string;
+  saving?: boolean;
+  saved?: boolean;
+  onSaveLibrary: (name: string) => void | Promise<void>;
   onClose: () => void;
 }) {
   const [name, setName] = useState(defaultName);
@@ -54,6 +60,14 @@ export function DoneModal({
               Keep editing
             </Button>
           </div>
+          <Button
+            className="flex w-full items-center justify-center gap-2 py-2.5"
+            disabled={saving || saved}
+            onClick={() => void onSaveLibrary(name)}
+          >
+            <SaveIcon className="size-4" />
+            {saved ? "Saved to library" : saving ? "Saving…" : "Save to library"}
+          </Button>
         </div>
       </div>
     </div>

@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Download builds the file in the tab with WebCodecs instead of recording the preview in real time
+- Export inspector tab is now **File**, with Download and Save to library
+
+### Fixed
+
+- Sped-up video no longer blacks out on the preview canvas
+
+### Added
+
+- Save to library stores the finished clip in this browser (IndexedDB)
+- Library page (`#library`) to play, download, or delete saved clips
+
 ## [1.0.0] - 2026-08-22
 
 First public release of **Loop**, an in-browser music video maker. Everything runs in the tab; files never leave the machine.

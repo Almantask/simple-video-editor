@@ -12,6 +12,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "mediabunny": "^1.55.2",
     "music-metadata": "^11.9.0",
     "react": "^19.1.1",
     "react-dom": "^19.1.1"

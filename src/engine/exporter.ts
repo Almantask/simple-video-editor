@@ -1,4 +1,7 @@
+import { fillAnalyserFromBuffer } from "./offline-analyser";
+import { videoTime } from "./playback";
 import type { EditorSession } from "./session";
+import type { ExportResult } from "../types";
 
 export interface MimeChoice {
   mime: string;
@@ -6,31 +9,31 @@ export interface MimeChoice {
   label: "MP4" | "WebM";
 }
 
-const CANDIDATES: MimeChoice[] = [
-  { mime: "video/mp4;codecs=avc1.42E01E,mp4a.40.2", ext: "mp4", label: "MP4" },
-  { mime: "video/mp4", ext: "mp4", label: "MP4" },
-  { mime: "video/webm;codecs=vp9,opus", ext: "webm", label: "WebM" },
-  { mime: "video/webm;codecs=vp8,opus", ext: "webm", label: "WebM" },
-  { mime: "video/webm", ext: "webm", label: "WebM" },
-];
-
 export function pickMime(): MimeChoice {
-  if (typeof MediaRecorder === "undefined") {
-    return { mime: "", ext: "webm", label: "WebM" };
-  }
-  for (const choice of CANDIDATES) {
-    if (MediaRecorder.isTypeSupported(choice.mime)) return choice;
-  }
-  return { mime: "", ext: "webm", label: "WebM" };
-}
-
-export function recorderSupported(): boolean {
-  return typeof MediaRecorder !== "undefined";
+  return { mime: "video/mp4", ext: "mp4", label: "MP4" };
 }
 
 export interface ExportHandle {
-  done: Promise<{ blob: Blob; mime: string; ext: "mp4" | "webm"; poster: string }>;
+  done: Promise<ExportResult>;
   cancel: () => void;
+}
+
+const FPS = 30;
+
+function isAbort(error: unknown): boolean {
+  return error instanceof DOMException && error.name === "AbortError";
+}
+
+async function decodeMusic(file: File): Promise<AudioBuffer> {
+  const bytes = await file.arrayBuffer();
+  const ctx = new AudioContext();
+  try {
+    return await ctx.decodeAudioData(bytes.slice(0));
+  } catch {
+    throw new Error("Couldn't decode the music for download.");
+  } finally {
+    await ctx.close();
+  }
 }
 
 export function startExport(
@@ -38,111 +41,149 @@ export function startExport(
   options: {
     width: number;
     height: number;
+    audioFile: File;
     onProgress?: (current: number, duration: number) => void;
   },
 ): ExportHandle {
   let cancelled = false;
-  let recorder: MediaRecorder | null = null;
-  let canvasStream: MediaStream | null = null;
+  let output: { cancel: () => Promise<void> } | null = null;
+  const { width, height, audioFile } = options;
+
+  session.pause();
+  session.beginExport(width, height);
 
   const cancel = () => {
     cancelled = true;
-    try {
-      if (recorder && recorder.state !== "inactive") recorder.stop();
-    } catch {
-      /* ignore */
-    }
-    session.exporting = false;
-    session.pause();
-    canvasStream?.getVideoTracks().forEach((track) => track.stop());
+    void output?.cancel();
   };
 
-  const done = (async () => {
-    if (!recorderSupported()) {
-      throw new Error("This browser can't record video. Try Chrome, Edge, or Safari.");
-    }
-    const choice = pickMime();
-    session.setCanvasSize(options.width, options.height);
-    await session.ensureGraph();
-    session.seek(0);
-    session.draw();
-
-    canvasStream = session.canvas.captureStream(30);
-    const audioStream = session.getAudioStream();
-    const mixed = new MediaStream([
-      ...canvasStream.getVideoTracks(),
-      ...(audioStream?.getAudioTracks() ?? []),
-    ]);
-
-    const bits = options.height >= 1080 ? 8_000_000 : 4_500_000;
-    recorder = choice.mime
-      ? new MediaRecorder(mixed, { mimeType: choice.mime, videoBitsPerSecond: bits })
-      : new MediaRecorder(mixed, { videoBitsPerSecond: bits });
-
-    const chunks: BlobPart[] = [];
-    recorder.ondataavailable = (event) => {
-      if (event.data.size > 0) chunks.push(event.data);
-    };
-
-    const stopped = new Promise<Blob>((resolve, reject) => {
-      recorder!.onstop = () => {
-        const type = recorder!.mimeType || choice.mime || "video/webm";
-        resolve(new Blob(chunks, { type }));
-      };
-      recorder!.onerror = (event) => {
-        const errorEvent = event as Event & { error?: Error };
-        reject(errorEvent.error ?? new Error("Recording failed."));
-      };
-    });
-
-    const previousEnded = session.onEnded;
-    const finished = new Promise<void>((resolve) => {
-      const finish = () => {
-        session.onEnded = previousEnded;
-        resolve();
-      };
-      session.onEnded = () => {
-        previousEnded?.();
-        finish();
-      };
-      const watch = () => {
-        if (cancelled) {
-          finish();
-          return;
-        }
-        const duration = session.duration();
-        const current = session.currentTime();
-        options.onProgress?.(current, duration);
-        if (duration > 0 && current >= duration - 0.05) {
-          finish();
-          return;
-        }
-        requestAnimationFrame(watch);
-      };
-      watch();
-    });
-
-    session.exporting = true;
+  const done = (async (): Promise<ExportResult> => {
     try {
       if (cancelled) throw new DOMException("Export cancelled", "AbortError");
-      recorder.start(250);
-      await session.play();
+
+      const {
+        AudioBufferSource,
+        BufferTarget,
+        CanvasSource,
+        Mp4OutputFormat,
+        Output,
+        QUALITY_HIGH,
+        WebMOutputFormat,
+        getFirstEncodableAudioCodec,
+        getFirstEncodableVideoCodec,
+      } = await import("mediabunny");
+
+      if (typeof VideoEncoder === "undefined" || typeof AudioEncoder === "undefined") {
+        throw new Error("This browser cannot create a video file. Try Chrome or Edge.");
+      }
+
+      const videoCodec = await getFirstEncodableVideoCodec(["avc", "hevc", "av1", "vp9", "vp8"], {
+        width,
+        height,
+        quality: QUALITY_HIGH,
+      });
+      if (!videoCodec) {
+        throw new Error("This browser cannot encode video. Try Chrome or Edge.");
+      }
+      const mp4 = videoCodec === "avc" || videoCodec === "hevc" || videoCodec === "av1";
+      const audioCodec = await getFirstEncodableAudioCodec(mp4 ? ["aac", "mp3"] : ["opus", "vorbis"], {
+        quality: QUALITY_HIGH,
+      });
+      if (!audioCodec) {
+        throw new Error("This browser cannot encode audio. Try Chrome or Edge.");
+      }
+      const mime = mp4 ? "video/mp4" : "video/webm";
+      const ext = mp4 ? "mp4" : "webm";
       if (cancelled) throw new DOMException("Export cancelled", "AbortError");
-      await finished;
-      await new Promise((r) => window.setTimeout(r, 120));
-      if (recorder.state !== "inactive") recorder.stop();
-      const blob = await stopped;
+
+      if (session.video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) {
+        await new Promise<void>((resolve) => {
+          const ready = () => {
+            session.video.removeEventListener("loadeddata", ready);
+            window.clearTimeout(timer);
+            resolve();
+          };
+          session.video.addEventListener("loadeddata", ready);
+          const timer = window.setTimeout(ready, 4000);
+        });
+      }
+
+      const duration = session.duration();
+      if (!(duration > 0)) throw new Error("The music duration is unknown.");
+
+      const audioBuffer = await decodeMusic(audioFile);
       if (cancelled) throw new DOMException("Export cancelled", "AbortError");
+
+      const target = new BufferTarget();
+      const muxer = new Output({
+        format: mp4 ? new Mp4OutputFormat({ fastStart: "in-memory" }) : new WebMOutputFormat(),
+        target,
+      });
+      output = muxer;
+
+      const videoSource = new CanvasSource(session.encodeTarget, {
+        codec: videoCodec,
+        quality: QUALITY_HIGH,
+        keyFrameInterval: 2,
+      });
+      muxer.addVideoTrack(videoSource, { frameRate: FPS });
+
+      const audioSource = new AudioBufferSource({
+        codec: audioCodec,
+        quality: QUALITY_HIGH,
+      });
+      muxer.addAudioTrack(audioSource);
+
+      await muxer.start();
+      if (cancelled) throw new DOMException("Export cancelled", "AbortError");
+      await audioSource.add(audioBuffer);
+
+      const frameDuration = 1 / FPS;
+      const frameCount = Math.max(1, Math.ceil(duration * FPS));
+      const freq = new Uint8Array(48);
+      const wave = new Uint8Array(256);
+      const videoDuration = session.video.duration;
+
+      for (let i = 0; i < frameCount; i++) {
+        if (cancelled) throw new DOMException("Export cancelled", "AbortError");
+        const t = Math.min(duration, i * frameDuration);
+        const mapped =
+          Number.isFinite(videoDuration) && videoDuration > 0 ? videoTime(t, session.settings.segments, videoDuration) : 0;
+        await session.seekVideo(mapped);
+        fillAnalyserFromBuffer(audioBuffer, t, freq, wave);
+        session.draw(t, freq, wave);
+        await videoSource.add(t, frameDuration);
+        options.onProgress?.(t, duration);
+        if (i % 20 === 0) {
+          await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+        }
+      }
+
+      if (cancelled) throw new DOMException("Export cancelled", "AbortError");
+      await muxer.finalize();
+      const buffer = target.buffer;
+      if (!buffer) throw new Error("Download produced an empty file.");
+      const blob = new Blob([buffer], { type: mime });
       const poster = session.posterJpeg();
-      const mime = recorder.mimeType || choice.mime || blob.type;
-      const ext = mime.includes("mp4") ? "mp4" : choice.ext;
-      return { blob, mime, ext, poster };
+      return {
+        blob,
+        mime,
+        ext,
+        poster,
+        duration,
+        width,
+        height,
+      };
+    } catch (error) {
+      if (cancelled || isAbort(error)) {
+        throw error instanceof DOMException ? error : new DOMException("Export cancelled", "AbortError");
+      }
+      throw error;
     } finally {
-      session.exporting = false;
-      session.pause();
-      canvasStream?.getVideoTracks().forEach((track) => track.stop());
+      session.endExport();
     }
   })();
 
   return { done, cancel };
 }
+

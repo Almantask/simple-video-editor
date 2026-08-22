@@ -124,3 +124,22 @@ export function UploadIcon(props: IconProps) {
     </svg>
   );
 }
+
+export function LibraryIcon(props: IconProps) {
+  return (
+    <svg {...icon(props)}>
+      <path d="M4 5h12v14H4z" />
+      <path d="M16 8h4v11H8" />
+    </svg>
+  );
+}
+
+export function SaveIcon(props: IconProps) {
+  return (
+    <svg {...icon(props)}>
+      <path d="M5 5h11l3 3v11H5z" />
+      <path d="M8 5v5h8V5" />
+      <path d="M8 19v-6h8v6" />
+    </svg>
+  );
+}

@@ -46,8 +46,12 @@ export function loopDelta(actual: number, expected: number, duration: number): n
   return delta;
 }
 
-export function needsSeek(actual: number, expected: number, duration: number): boolean {
-  return Math.abs(loopDelta(actual, expected, duration)) > DRIFT_THRESHOLD;
+export function driftThreshold(rate: number): number {
+  return Math.max(DRIFT_THRESHOLD, DRIFT_THRESHOLD * Math.max(1, rate));
+}
+
+export function needsSeek(actual: number, expected: number, duration: number, rate = 1): boolean {
+  return Math.abs(loopDelta(actual, expected, duration)) > driftThreshold(rate);
 }
 
 export function gapAround(origin: number, segments: SpeedSegment[], duration: number): { start: number; end: number } | null {

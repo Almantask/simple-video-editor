@@ -13,9 +13,23 @@ export function isAudioFile(file: File): boolean {
   return file.type.startsWith("audio/") || AUDIO_OK.test(file.name);
 }
 
+/**
+ * Copy a picker File into an in-memory File.
+ * Chromium revokes live file-input blobs (ERR_UPLOAD_FILE_CHANGED) if the
+ * input is reset, the file is read twice, or the bytes change on disk.
+ */
+export async function detachFile(file: File): Promise<File> {
+  const bytes = await file.arrayBuffer();
+  return new File([bytes], file.name, {
+    type: file.type,
+    lastModified: Date.now(),
+  });
+}
+
 export async function loadVideoFile(file: File): Promise<MediaAsset> {
   if (!isVideoFile(file)) throw new Error("Use an MP4, WebM, or MOV file.");
-  const url = URL.createObjectURL(file);
+  const frozen = await detachFile(file);
+  const url = URL.createObjectURL(frozen);
   const video = document.createElement("video");
   video.preload = "auto";
   video.muted = true;
@@ -26,15 +40,20 @@ export async function loadVideoFile(file: File): Promise<MediaAsset> {
     if (!Number.isFinite(video.duration) || video.duration <= 0) {
       throw new Error("This video has no readable duration.");
     }
+    const duration = video.duration;
+    const width = video.videoWidth;
+    const height = video.videoHeight;
     const thumbnail = await captureFrame(video);
+    video.removeAttribute("src");
+    video.load();
     return {
-      file,
+      file: frozen,
       url,
-      name: file.name,
-      duration: video.duration,
+      name: frozen.name,
+      duration,
       thumbnail,
-      width: video.videoWidth,
-      height: video.videoHeight,
+      width,
+      height,
     };
   } catch (error) {
     URL.revokeObjectURL(url);
@@ -50,7 +69,8 @@ export interface AudioLoadResult {
 
 export async function loadAudioFile(file: File): Promise<AudioLoadResult> {
   if (!isAudioFile(file)) throw new Error("Use an MP3, WAV, FLAC, or M4A file.");
-  const url = URL.createObjectURL(file);
+  const frozen = await detachFile(file);
+  const url = URL.createObjectURL(frozen);
   const audio = document.createElement("audio");
   audio.preload = "metadata";
   audio.src = url;
@@ -59,18 +79,21 @@ export async function loadAudioFile(file: File): Promise<AudioLoadResult> {
     if (!Number.isFinite(audio.duration) || audio.duration <= 0) {
       throw new Error("This track has no readable duration.");
     }
+    const duration = audio.duration;
+    audio.removeAttribute("src");
+    audio.load();
     const [embedded, peaks] = await Promise.all([
-      extractEmbeddedLyrics(file),
-      computePeaks(file).catch(() => undefined),
+      extractEmbeddedLyrics(frozen),
+      computePeaks(frozen).catch(() => undefined),
     ]);
     return {
       lyrics: embedded.lines,
       lyricsEmbedded: embedded.embedded,
       asset: {
-        file,
+        file: frozen,
         url,
-        name: file.name,
-        duration: audio.duration,
+        name: frozen.name,
+        duration,
         peaks,
         title: embedded.title,
       },
@@ -93,7 +116,7 @@ function waitFor(el: HTMLMediaElement, event: string, timeout = 20000): Promise<
     };
     const fail = () => {
       cleanup();
-      reject(new Error("This browser can't decode that file."));
+      reject(new Error(mediaErrorMessage(el)));
     };
     const cleanup = () => {
       window.clearTimeout(timer);
@@ -103,6 +126,17 @@ function waitFor(el: HTMLMediaElement, event: string, timeout = 20000): Promise<
     el.addEventListener(event, ok, { once: true });
     el.addEventListener("error", fail, { once: true });
   });
+}
+
+function mediaErrorMessage(el: HTMLMediaElement): string {
+  const code = el.error?.code;
+  if (code === MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED) {
+    return "This browser can't decode that file.";
+  }
+  if (code === MediaError.MEDIA_ERR_NETWORK) {
+    return "Could not read that file. Drop it again.";
+  }
+  return "This browser can't decode that file.";
 }
 
 async function captureFrame(video: HTMLVideoElement): Promise<string | undefined> {

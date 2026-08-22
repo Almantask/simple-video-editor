@@ -5,7 +5,7 @@
 [![GitHub Pages](https://img.shields.io/badge/GitHub%20Pages-live-22D3EE?logo=github&logoColor=white)](https://almantask.github.io/simple-video-editor/)
 [![Release](https://img.shields.io/github/v/release/Almantask/simple-video-editor?display_name=tag)](https://github.com/Almantask/simple-video-editor/releases)
 
-A static website that turns a video clip and a music file into a music video. The picture loops until the song ends. You can speed up or slow down the video on selected intervals, overlay lyrics, and add a sound visualizer. Export records the composition in the browser and downloads an MP4 (Chrome, Edge, Safari) or WebM file.
+A static website that turns a video clip and a music file into a music video. The video loops until the song ends. You can speed up or slow down the video on selected intervals, overlay lyrics, and add a sound visualizer. Download builds an MP4 in the tab (Chrome, Edge, Safari) or WebM if that is all the browser can encode. Save finished clips to a library that lives in this browser.
 
 Files never leave this tab. There is no server.
 
@@ -57,13 +57,13 @@ The tagged version must already have a matching `## [1.0.0]` heading in the chan
 
 1. Drop a video (MP4, WebM, MOV) and a music file (MP3, WAV, FLAC, M4A).
 2. The studio opens when both files are ready.
-3. Play with Space. Click-drag the timeline to add a speed change (0.25x–4x). Speed affects the picture only; the music stays at 1x.
+3. Play with Space. Click-drag the timeline to add a speed change (0.25x–4x). Speed affects the video only; the music stays at 1x.
 4. Optional: upload an LRC or SRT file, or use lyrics embedded in the audio (ID3 SYLT / LRC-style USLT).
 5. Optional: pick a visualizer (bars, waveform, ring) and colors.
-6. Export at 720p or 1080p. Keep the tab in the foreground — recording is real time (a 3-minute song takes about 3 minutes).
+6. Download at 720p or 1080p, or save the clip to the **Library** (stored in this browser). Keep the tab open until the file is created.
 
 ## Notes
 
 - Video speed ramps do not change the music.
-- Background tabs throttle `requestAnimationFrame`, which can stall or glitch an export.
-- Codec support depends on the browser. If a file will not decode, try MP4 + AAC/MP3.
+- Background tabs can slow down file creation. Keep the tab open until download finishes.
+- Codec support depends on the browser. If a file will not decode, try MP4 + AAC/MP3. If download is unavailable, try Chrome or Edge.

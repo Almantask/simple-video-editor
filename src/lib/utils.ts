@@ -39,3 +39,17 @@ export function downloadBlob(blob: Blob, filename: string): void {
   a.click();
   window.setTimeout(() => URL.revokeObjectURL(url), 4000);
 }
+
+export function dataUrlToBlob(dataUrl: string): Blob | null {
+  const comma = dataUrl.indexOf(",");
+  if (comma < 0) return null;
+  const mime = /data:(.*?);/.exec(dataUrl.slice(0, comma))?.[1] ?? "image/jpeg";
+  try {
+    const binary = atob(dataUrl.slice(comma + 1));
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    return new Blob([bytes], { type: mime });
+  } catch {
+    return null;
+  }
+}

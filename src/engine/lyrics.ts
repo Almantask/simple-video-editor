@@ -60,7 +60,7 @@ export function currentLyric(lines: LyricLine[], time: number): LyricLine | null
   return found;
 }
 
-export async function extractEmbeddedLyrics(file: File): Promise<{
+export async function extractEmbeddedLyrics(file: Blob): Promise<{
   title?: string;
   lines: LyricLine[];
   embedded: boolean;

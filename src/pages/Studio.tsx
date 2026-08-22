@@ -1,18 +1,21 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { DoneModal } from "../components/DoneModal";
 import { Inspector } from "../components/Inspector";
 import { MediaChip } from "../components/MediaDropzone";
 import { Timeline } from "../components/Timeline";
 import { Transport } from "../components/Transport";
-import { Wordmark } from "../components/Wordmark";
+import { LibraryLink, Wordmark } from "../components/Wordmark";
 import { Button } from "../components/ui/Button";
+import { DownloadIcon, SaveIcon } from "../components/Icons";
 import { startExport } from "../engine/exporter";
 import { parseLyricsFile } from "../engine/lyrics";
 import { EditorSession } from "../engine/session";
 import { clampRate } from "../engine/playback";
-import { formatTime } from "../lib/utils";
+import { isQuotaError, saveClip } from "../lib/library";
+import { dataUrlToBlob } from "../lib/utils";
 import type {
   ExportResolution,
+  ExportResult,
   FitMode,
   InspectorTab,
   LyricLine,
@@ -20,6 +23,10 @@ import type {
   SpeedSegment,
   VisualizerId,
 } from "../types";
+
+function defaultClipName(audio: MediaAsset): string {
+  return `${(audio.title || audio.name.replace(/\.[^.]+$/, "")).replace(/[<>:"/\\|?*]/g, "")} - loop`;
+}
 
 export function Studio({
   video,
@@ -35,8 +42,8 @@ export function Studio({
   audio: MediaAsset;
   lyrics: LyricLine[];
   lyricsEmbedded: boolean;
-  onVideoFile: (file: File) => void;
-  onAudioFile: (file: File) => void;
+  onVideoFile: (file: File) => void | Promise<void>;
+  onAudioFile: (file: File) => void | Promise<void>;
   onLyrics: (lines: LyricLine[], fromFile: boolean) => void;
   notify: (text: string, tone?: "info" | "error") => void;
 }) {
@@ -46,6 +53,8 @@ export function Studio({
   const sessionRef = useRef<EditorSession | null>(null);
   const timeRef = useRef(0);
   const cancelExport = useRef<(() => void) | null>(null);
+  const encodeLock = useRef<Promise<ExportResult> | null>(null);
+  const encoded = useRef<{ key: string; result: ExportResult } | null>(null);
 
   const [tab, setTab] = useState<InspectorTab>("speed");
   const [segments, setSegments] = useState<SpeedSegment[]>([]);
@@ -63,9 +72,42 @@ export function Studio({
   const [exporting, setExporting] = useState(false);
   const [exportTime, setExportTime] = useState(0);
   const [transportVisible, setTransportVisible] = useState(true);
-  const [done, setDone] = useState<{ blob: Blob; ext: string; poster: string } | null>(null);
+  const [done, setDone] = useState<ExportResult | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [savedKey, setSavedKey] = useState<string | null>(null);
 
   const duration = audio.duration;
+  const encodeKey = useMemo(
+    () =>
+      JSON.stringify({
+        video: video.url,
+        audio: audio.url,
+        resolution,
+        fit,
+        segments,
+        lyrics,
+        showLyrics,
+        lyricFontSize,
+        lyricColor,
+        visualizer,
+        visualizerOpacity,
+        visualizerColor,
+      }),
+    [
+      video.url,
+      audio.url,
+      resolution,
+      fit,
+      segments,
+      lyrics,
+      showLyrics,
+      lyricFontSize,
+      lyricColor,
+      visualizer,
+      visualizerOpacity,
+      visualizerColor,
+    ],
+  );
 
   useEffect(() => {
     const videoEl = videoRef.current;
@@ -78,7 +120,6 @@ export function Studio({
     session.onTime = (time) => {
       timeRef.current = time;
       setCurrentTime(time);
-      setExportTime(time);
     };
     session.onEnded = () => setPlaying(false);
     session.startLoop();
@@ -91,20 +132,26 @@ export function Studio({
   useEffect(() => {
     const el = videoRef.current;
     if (!el) return;
+    const onError = () => notify("Could not read the video. Drop it again.", "error");
+    el.addEventListener("error", onError);
     el.src = video.url;
     el.load();
-  }, [video.url]);
+    return () => el.removeEventListener("error", onError);
+  }, [video.url, notify]);
 
   useEffect(() => {
     const el = audioRef.current;
     if (!el) return;
+    const onError = () => notify("Could not read the audio. Drop it again.", "error");
+    el.addEventListener("error", onError);
     const wasPlaying = sessionRef.current?.playing;
     el.src = audio.url;
     el.load();
     sessionRef.current?.seek(0);
     setPlaying(false);
     if (wasPlaying) void sessionRef.current?.pause();
-  }, [audio.url]);
+    return () => el.removeEventListener("error", onError);
+  }, [audio.url, notify]);
 
   useEffect(() => {
     sessionRef.current?.updateSettings({
@@ -166,14 +213,11 @@ export function Studio({
     setPlaying(true);
   }, [exporting]);
 
-  const seek = useCallback(
-    (time: number) => {
-      sessionRef.current?.seek(time);
-      setCurrentTime(time);
-      timeRef.current = time;
-    },
-    [],
-  );
+  const seek = useCallback((time: number) => {
+    sessionRef.current?.seek(time);
+    setCurrentTime(time);
+    timeRef.current = time;
+  }, []);
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -225,37 +269,88 @@ export function Studio({
     }
   };
 
-  const runExport = async () => {
+  const ensureEncode = async (): Promise<ExportResult> => {
     const session = sessionRef.current;
-    if (!session || exporting) return;
+    if (!session) throw new Error("Nothing to download yet.");
+    if (encoded.current?.key === encodeKey) return encoded.current.result;
+    if (encodeLock.current) return encodeLock.current;
+    const key = encodeKey;
     session.pause();
     setPlaying(false);
     setExporting(true);
     setExportTime(0);
     const height = resolution === 1080 ? 1080 : 720;
     const width = resolution === 1080 ? 1920 : 1280;
-    try {
-      const job = startExport(session, {
-        width,
-        height,
-        onProgress: (current) => setExportTime(current),
+    const job = startExport(session, {
+      width,
+      height,
+      audioFile: audio.file,
+      onProgress: (current) => setExportTime(current),
+    });
+    cancelExport.current = job.cancel;
+    encodeLock.current = job.done
+      .then((result) => {
+        encoded.current = { key, result };
+        return result;
+      })
+      .finally(() => {
+        encodeLock.current = null;
+        cancelExport.current = null;
+        setExporting(false);
+        setPlaying(false);
       });
-      cancelExport.current = job.cancel;
-      const result = await job.done;
-      setDone({ blob: result.blob, ext: result.ext, poster: result.poster });
+    return encodeLock.current;
+  };
+
+  const runDownload = async () => {
+    if (exporting) return;
+    try {
+      const result = await ensureEncode();
+      setDone(result);
     } catch (error) {
       if (error instanceof DOMException && error.name === "AbortError") return;
-      const message = error instanceof Error ? error.message : "Export failed.";
+      const message = error instanceof Error ? error.message : "Download failed.";
+      notify(message, "error");
+    }
+  };
+
+  const persistToLibrary = async (result: ExportResult, name: string) => {
+    const poster = dataUrlToBlob(result.poster) ?? new Blob([], { type: "image/jpeg" });
+    await saveClip({
+      name: name.replace(/\.(mp4|webm)$/i, "").trim() || defaultClipName(audio),
+      duration: result.duration,
+      width: result.width,
+      height: result.height,
+      mime: result.mime,
+      ext: result.ext,
+      poster,
+      video: result.blob,
+    });
+    setSavedKey(encodeKey);
+  };
+
+  const runSaveLibrary = async (name = defaultClipName(audio)) => {
+    if (exporting || saving) return;
+    try {
+      const result = await ensureEncode();
+      setSaving(true);
+      await persistToLibrary(result, name);
+      notify("Saved to library.");
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") return;
+      if (isQuotaError(error)) {
+        notify("Not enough space in this browser. Download the file, or delete clips from the library.", "error");
+        return;
+      }
+      const message = error instanceof Error ? error.message : "Couldn't save to the library.";
       notify(message, "error");
     } finally {
-      cancelExport.current = null;
-      setExporting(false);
-      setPlaying(false);
+      setSaving(false);
     }
   };
 
   const pct = duration > 0 ? Math.min(100, (exportTime / duration) * 100) : 0;
-  const defaultName = `${(audio.title || audio.name.replace(/\.[^.]+$/, "")).replace(/[<>:"/\\|?*]/g, "")} - loop`;
+  const defaultName = defaultClipName(audio);
 
   return (
     <div className="flex h-dvh flex-col overflow-hidden bg-bg text-text">
@@ -265,33 +360,39 @@ export function Studio({
         </div>
       )}
       <header className="glass relative z-20 flex h-12 shrink-0 items-center gap-3 px-4">
-        <Wordmark compact />
+        <Wordmark compact linked={!exporting} />
+        <LibraryLink disabled={exporting} />
         <div className="flex min-w-0 flex-1 items-center gap-2">
           <MediaChip kind="video" asset={video} disabled={exporting} onFile={onVideoFile} />
           <MediaChip kind="audio" asset={audio} disabled={exporting} onFile={onAudioFile} />
         </div>
         {exporting ? (
           <div className="flex items-center gap-2">
-            <span className="rounded-full bg-white/10 px-3 py-1 font-mono text-xs">
-              Recording {formatTime(exportTime)} / {formatTime(duration)}
-            </span>
+            <span className="rounded-full bg-white/10 px-3 py-1 font-mono text-xs">Creating {Math.round(pct)}%</span>
             <Button
               onClick={() => {
                 cancelExport.current?.();
-                notify("Export cancelled.");
+                notify("Download cancelled.");
               }}
             >
               Cancel
             </Button>
           </div>
         ) : (
-          <Button variant="solid" onClick={() => void runExport()}>
-            Export
-          </Button>
+          <div className="flex shrink-0 items-center gap-2">
+            <Button className="flex items-center gap-2" onClick={() => void runSaveLibrary()}>
+              <SaveIcon className="size-4" />
+              Save to library
+            </Button>
+            <Button variant="solid" className="flex items-center gap-2" onClick={() => void runDownload()}>
+              <DownloadIcon className="size-4" />
+              Download
+            </Button>
+          </div>
         )}
       </header>
       {exporting && (
-        <div className="glass mx-auto mt-3 rounded-full px-4 py-1.5 text-xs text-muted">Keep this tab in the foreground.</div>
+        <div className="glass mx-auto mt-3 rounded-full px-4 py-1.5 text-xs text-muted">Keep this tab open while the file is created.</div>
       )}
       <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
         <div
@@ -300,11 +401,20 @@ export function Studio({
             if (!exporting) void togglePlay();
           }}
         >
-          <canvas
-            ref={canvasRef}
-            className="inner-bevel max-h-full max-w-full rounded-xl bg-black"
-            style={{ aspectRatio: "16 / 9" }}
-          />
+          <div className="relative max-h-full max-w-full overflow-hidden rounded-xl" style={{ aspectRatio: "16 / 9" }}>
+            <video
+              ref={videoRef}
+              className="pointer-events-none absolute inset-0 h-full w-full object-contain opacity-[0.02]"
+              style={{ transform: "translateZ(0)" }}
+              playsInline
+              muted
+              aria-hidden
+            />
+            <canvas
+              ref={canvasRef}
+              className="inner-bevel relative z-[1] h-full w-full rounded-xl bg-black"
+            />
+          </div>
           <div className="pointer-events-none absolute inset-0">
             <Transport
               playing={playing}
@@ -334,7 +444,7 @@ export function Studio({
           onShowLyrics={setShowLyrics}
           onLyricFontSize={setLyricFontSize}
           onLyricColor={setLyricColor}
-          onLyricsFile={(file) => void handleLyricsFile(file)}
+          onLyricsFile={handleLyricsFile}
           visualizer={visualizer}
           visualizerOpacity={visualizerOpacity}
           visualizerColor={visualizerColor}
@@ -347,7 +457,8 @@ export function Studio({
           onResolution={setResolution}
           onFit={setFit}
           exporting={exporting}
-          onExport={() => void runExport()}
+          onExport={() => void runDownload()}
+          onSaveLibrary={() => void runSaveLibrary()}
           notify={notify}
         />
       </div>
@@ -365,14 +476,16 @@ export function Studio({
           if (id) setTab("speed");
         }}
       />
-      <video ref={videoRef} className="hidden" playsInline muted />
-      <audio ref={audioRef} className="hidden" />
+      <audio ref={audioRef} className="pointer-events-none fixed left-0 top-0 h-px w-px opacity-0" />
       {done && (
         <DoneModal
           poster={done.poster}
           blob={done.blob}
           ext={done.ext}
           defaultName={defaultName}
+          saving={saving}
+          saved={savedKey === encodeKey}
+          onSaveLibrary={(name) => void runSaveLibrary(name)}
           onClose={() => setDone(null)}
         />
       )}
