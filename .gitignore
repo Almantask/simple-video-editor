@@ -1,0 +1,9 @@
+node_modules
+dist
+*.local
+.DS_Store
+.vite
+tsconfig.app.tsbuildinfo
+tsconfig.node.tsbuildinfo
+release-notes.md
+
