@@ -9,6 +9,70 @@ A static website that turns a video clip and a music file into a music video. Th
 
 Files never leave this tab. There is no server.
 
+<p align="center">
+  <img src="docs/screenshots/landing.png" alt="Loop landing page: drop a video clip and a music track" width="900" />
+</p>
+
+## Screens
+
+### Studio
+
+When both files are ready, the editor opens: preview, inspector, and a full-width timeline. Play with Space. Drag the waveform to add a speed change.
+
+![Studio with preview, speed inspector, and timeline ramps](docs/screenshots/studio.png)
+
+Inspector tabs:
+
+<table>
+  <tr>
+    <td align="center" width="50%">
+      <img src="docs/screenshots/studio-lyrics.png" alt="Lyrics tab with LRC overlay on the preview" />
+      <p><strong>Lyrics</strong> — LRC or SRT overlay, size and color</p>
+    </td>
+    <td align="center" width="50%">
+      <img src="docs/screenshots/studio-visual.png" alt="Visual tab with bars, wave, and ring visualizers" />
+      <p><strong>Visual</strong> — bars, waveform, or ring</p>
+    </td>
+  </tr>
+  <tr>
+    <td align="center">
+      <img src="docs/screenshots/studio-file.png" alt="File tab with 720p/1080p download and save to library" />
+      <p><strong>File</strong> — 720p or 1080p, download or save</p>
+    </td>
+    <td align="center">
+      <img src="docs/screenshots/library.png" alt="Library of clips saved in this browser" />
+      <p><strong>Library</strong> — play, download, or delete saved clips</p>
+    </td>
+  </tr>
+</table>
+
+Landing also fits a phone:
+
+<p align="center">
+  <img src="docs/screenshots/landing-mobile.png" alt="Phone landing with video and audio drop zones" width="280" />
+</p>
+
+## Features
+
+- **Loop to the song** — the clip repeats until the music ends; playback stops with the audio
+- **Speed ramps** — non-overlapping intervals on the timeline (0.25x–4x). Speed changes the video only; the music stays at 1x
+- **Lyrics** — drop an LRC or SRT file, or use lyrics already embedded in the audio (ID3 SYLT / LRC-style USLT)
+- **Sound visuals** — none, frequency bars, mirrored waveform, or radial ring, with color and opacity
+- **Download in the tab** — WebCodecs encode at 720p or 1080p (contain or cover). MP4 when the browser can encode it, otherwise WebM
+- **Library** — save finished clips in this browser (IndexedDB). Play, download, or delete them from `#library`
+- **Keyboard** — Space play/pause, arrows seek ±5s, Home/End
+- **Private** — files never leave this tab; there is no server
+- **Phone layout** — landing, studio, and library fit a small screen
+
+## How to use
+
+1. Drop a video (MP4, WebM, MOV) and a music file (MP3, WAV, FLAC, M4A).
+2. The studio opens when both files are ready.
+3. Play with Space. Click-drag the timeline to add a speed change (0.25x–4x). Speed affects the video only; the music stays at 1x.
+4. Optional: upload an LRC or SRT file, or use lyrics embedded in the audio (ID3 SYLT / LRC-style USLT).
+5. Optional: pick a visualizer (bars, waveform, ring) and colors.
+6. Download at 720p or 1080p, or save the clip to the **Library** (stored in this browser). Keep the tab open until the file is created.
+
 ## Develop
 
 ```bash
@@ -52,15 +116,6 @@ git push origin v1.0.0
 ```
 
 The tagged version must already have a matching `## [1.0.0]` heading in the changelog.
-
-## How to use
-
-1. Drop a video (MP4, WebM, MOV) and a music file (MP3, WAV, FLAC, M4A).
-2. The studio opens when both files are ready.
-3. Play with Space. Click-drag the timeline to add a speed change (0.25x–4x). Speed affects the video only; the music stays at 1x.
-4. Optional: upload an LRC or SRT file, or use lyrics embedded in the audio (ID3 SYLT / LRC-style USLT).
-5. Optional: pick a visualizer (bars, waveform, ring) and colors.
-6. Download at 720p or 1080p, or save the clip to the **Library** (stored in this browser). Keep the tab open until the file is created.
 
 ## Notes
 
