@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- README shows screenshots of landing, studio, and library, and lists current features
+
 ## [1.1.0] - 2026-08-22
 
 Download, library, and a layout that fits a phone. Files still never leave this tab.
